@@ -6,6 +6,7 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import classification_report
+from sklearn.preprocessing import StandardScaler
 
 # =========================
 # LOAD DATASET
@@ -31,10 +32,19 @@ X_train, X_test, y_train, y_test = train_test_split(
 )
 
 # =========================
+# STANDARD SCALER
+# =========================
+
+scaler = StandardScaler()
+
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
+
+# =========================
 # TRAIN KNN
 # =========================
 
-model = KNeighborsClassifier(n_neighbors=3)
+model = KNeighborsClassifier(n_neighbors=5)
 
 model.fit(X_train, y_train)
 
@@ -60,9 +70,10 @@ print("\nClassification Report:")
 print(classification_report(y_test, y_pred))
 
 # =========================
-# SIMPAN MODEL
+# SIMPAN MODEL & SCALER
 # =========================
 
 joblib.dump(model, "model/knn_model.pkl")
+joblib.dump(scaler, "model/scaler.pkl")
 
-print("\nModel berhasil disimpan!")
+print("\nModel dan scaler berhasil disimpan!")

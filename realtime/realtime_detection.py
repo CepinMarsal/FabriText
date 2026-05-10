@@ -5,10 +5,11 @@ import numpy as np
 from skimage.feature import graycomatrix, graycoprops
 
 # =========================
-# LOAD MODEL
+# LOAD MODEL & SCALER
 # =========================
 
 model = joblib.load("model/knn_model.pkl")
+scaler = joblib.load("model/scaler.pkl")
 
 # =========================
 # FUNCTION GLCM
@@ -19,16 +20,16 @@ def extract_glcm_features(image):
     glcm = graycomatrix(
         image,
         distances=[1],
-        angles=[0],
+        angles=[0, np.pi/4, np.pi/2, 3*np.pi/4],
         levels=256,
         symmetric=True,
         normed=True
     )
 
-    contrast = graycoprops(glcm, 'contrast')[0, 0]
-    homogeneity = graycoprops(glcm, 'homogeneity')[0, 0]
-    energy = graycoprops(glcm, 'energy')[0, 0]
-    correlation = graycoprops(glcm, 'correlation')[0, 0]
+    contrast = graycoprops(glcm, 'contrast').mean()
+    homogeneity = graycoprops(glcm, 'homogeneity').mean()
+    energy = graycoprops(glcm, 'energy').mean()
+    correlation = graycoprops(glcm, 'correlation').mean()
 
     return [[
         contrast,
@@ -50,41 +51,119 @@ while True:
     if not ret:
         break
 
-    # ukuran frame
     h, w, _ = frame.shape
 
-    # ROI tengah
-    x1 = int(w * 0.3)
-    y1 = int(h * 0.3)
+    # =========================
+    # ROI LEBIH KECIL
+    # =========================
 
-    x2 = int(w * 0.7)
-    y2 = int(h * 0.7)
+    x1 = int(w * 0.42)
+    y1 = int(h * 0.42)
+
+    x2 = int(w * 0.58)
+    y2 = int(h * 0.58)
 
     roi = frame[y1:y2, x1:x2]
 
-    # preprocessing
+    # =========================
+    # PREPROCESSING
+    # =========================
+
     gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+
     gray = cv2.resize(gray, (200, 200))
 
-    # ekstraksi fitur
+    # blur untuk mengurangi noise
+    gray = cv2.GaussianBlur(gray, (5,5), 0)
+
+    # sharpening untuk memperjelas tekstur
+    kernel = np.array([
+        [0, -1, 0],
+        [-1, 5,-1],
+        [0, -1, 0]
+    ])
+
+    gray = cv2.filter2D(gray, -1, kernel)
+
+    # =========================
+    # FEATURE EXTRACTION
+    # =========================
+
     features = extract_glcm_features(gray)
 
-    # prediksi
+    # scaler
+    features = scaler.transform(features)
+
+    # =========================
+    # PREDIKSI
+    # =========================
+
     prediction = model.predict(features)[0]
 
-    # warna box
+    # =========================
+    # WARNA BOX
+    # =========================
+
     color = (0, 255, 0)
 
     if prediction == "rusak":
         color = (0, 0, 255)
 
-    # tampilkan box
-    cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
+    # =========================
+    # TAMPILKAN FITUR
+    # =========================
 
-    # tampilkan label
+    raw_features = extract_glcm_features(gray)[0]
+
     cv2.putText(
         frame,
-        f"Kondisi: {prediction}",
+        f"Contrast: {raw_features[0]:.4f}",
+        (20, 40),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.6,
+        (255,255,255),
+        2
+    )
+
+    cv2.putText(
+        frame,
+        f"Homogeneity: {raw_features[1]:.4f}",
+        (20, 70),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.6,
+        (255,255,255),
+        2
+    )
+
+    cv2.putText(
+        frame,
+        f"Energy: {raw_features[2]:.4f}",
+        (20, 100),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.6,
+        (255,255,255),
+        2
+    )
+
+    cv2.putText(
+        frame,
+        f"Correlation: {raw_features[3]:.4f}",
+        (20, 130),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.6,
+        (255,255,255),
+        2
+    )
+
+    # =========================
+    # BOX & LABEL
+    # =========================
+
+    cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
+
+    cv2.putText(
+        frame,
+        f"Hasil: {prediction}",
         (x1, y1 - 10),
         cv2.FONT_HERSHEY_SIMPLEX,
         0.8,
@@ -92,13 +171,14 @@ while True:
         2
     )
 
-    # tampilkan ROI
-    cv2.imshow("ROI", gray)
+    # =========================
+    # SHOW
+    # =========================
 
-    # tampilkan kamera
+    cv2.imshow("ROI", gray)
     cv2.imshow("Fabric Defect Detection", frame)
 
-    # keluar tekan q
+    # keluar
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
