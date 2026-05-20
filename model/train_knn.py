@@ -2,26 +2,21 @@ import pandas as pd
 import joblib
 
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import accuracy_score
-from sklearn.metrics import confusion_matrix
-from sklearn.metrics import classification_report
-from sklearn.preprocessing import StandardScaler
 
 # =========================
-# LOAD DATASET
+# LOAD DATA
 # =========================
 
 df = pd.read_csv("features/features.csv")
 
-# fitur
-X = df[['contrast', 'homogeneity', 'energy', 'correlation']]
-
-# label
-y = df['label']
+X = df.drop("label", axis=1)
+y = df["label"]
 
 # =========================
-# SPLIT DATA
+# SPLIT
 # =========================
 
 X_train, X_test, y_train, y_test = train_test_split(
@@ -32,7 +27,7 @@ X_train, X_test, y_train, y_test = train_test_split(
 )
 
 # =========================
-# STANDARD SCALER
+# SCALING
 # =========================
 
 scaler = StandardScaler()
@@ -41,39 +36,30 @@ X_train = scaler.fit_transform(X_train)
 X_test = scaler.transform(X_test)
 
 # =========================
-# TRAIN KNN
+# MODEL
 # =========================
 
-model = KNeighborsClassifier(n_neighbors=5)
+model = KNeighborsClassifier(
+    n_neighbors=3
+)
 
 model.fit(X_train, y_train)
 
 # =========================
-# PREDIKSI
+# EVALUATION
 # =========================
 
 y_pred = model.predict(X_test)
 
-# =========================
-# EVALUASI
-# =========================
+acc = accuracy_score(y_test, y_pred)
 
-accuracy = accuracy_score(y_test, y_pred)
-
-print("\n===== HASIL EVALUASI =====")
-print("Accuracy:", accuracy)
-
-print("\nConfusion Matrix:")
-print(confusion_matrix(y_test, y_pred))
-
-print("\nClassification Report:")
-print(classification_report(y_test, y_pred))
+print(f"Akurasi : {acc * 100:.2f}%")
 
 # =========================
-# SIMPAN MODEL & SCALER
+# SAVE
 # =========================
 
-joblib.dump(model, "model/knn_model.pkl")
-joblib.dump(scaler, "model/scaler.pkl")
+joblib.dump(model, "knn_model.pkl")
+joblib.dump(scaler, "scaler.pkl")
 
-print("\nModel dan scaler berhasil disimpan!")
+print("Model berhasil disimpan")

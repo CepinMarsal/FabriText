@@ -1,46 +1,20 @@
 import cv2
-import os
+import numpy as np
 
-# folder input
-input_folder = "dataset"
+def preprocess_image(image):
 
-# folder output
-output_folder = "dataset_processed"
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-# ukuran gambar
-IMG_SIZE = 200
+    gray = cv2.resize(gray, (200, 200))
 
-# buat folder output kalau belum ada
-os.makedirs(output_folder, exist_ok=True)
+    gray = cv2.GaussianBlur(gray, (5,5), 0)
 
-# loop tiap kelas
-for label in os.listdir(input_folder):
+    kernel = np.array([
+        [0, -1, 0],
+        [-1, 5,-1],
+        [0, -1, 0]
+    ])
 
-    input_path = os.path.join(input_folder, label)
-    output_path = os.path.join(output_folder, label)
+    gray = cv2.filter2D(gray, -1, kernel)
 
-    os.makedirs(output_path, exist_ok=True)
-
-    # loop gambar
-    for filename in os.listdir(input_path):
-
-        img_path = os.path.join(input_path, filename)
-
-        # baca gambar
-        img = cv2.imread(img_path)
-
-        # skip kalau error
-        if img is None:
-            continue
-
-        # resize
-        img = cv2.resize(img, (IMG_SIZE, IMG_SIZE))
-
-        # grayscale
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
-        # simpan
-        save_path = os.path.join(output_path, filename)
-        cv2.imwrite(save_path, gray)
-
-print("Preprocessing selesai!")
+    return gray

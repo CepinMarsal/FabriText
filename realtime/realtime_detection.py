@@ -1,173 +1,263 @@
 import cv2
 import joblib
+import time
+import os
 import numpy as np
 
-from skimage.feature import graycomatrix, graycoprops
+from preprocessing.preprocess import preprocess_image
+from segmentation.fabric_segment import detect_fabric
+from features.feature_utils import extract_glcm_features
+from realtime.ui_utils import draw_status
+from realtime.alarm import play_alarm
 
 # =========================
-# LOAD MODEL & SCALER
+# LOAD MODEL
 # =========================
 
 model = joblib.load("model/knn_model.pkl")
 scaler = joblib.load("model/scaler.pkl")
 
 # =========================
-# FUNCTION GLCM
+# OUTPUT FOLDER
 # =========================
 
-def extract_glcm_features(image):
-
-    glcm = graycomatrix(
-        image,
-        distances=[1],
-        angles=[0, np.pi/4, np.pi/2, 3*np.pi/4],
-        levels=256,
-        symmetric=True,
-        normed=True
-    )
-
-    contrast = graycoprops(glcm, 'contrast').mean()
-    homogeneity = graycoprops(glcm, 'homogeneity').mean()
-    energy = graycoprops(glcm, 'energy').mean()
-    correlation = graycoprops(glcm, 'correlation').mean()
-
-    return [[
-        contrast,
-        homogeneity,
-        energy,
-        correlation
-    ]]
+os.makedirs("output/screenshots", exist_ok=True)
 
 # =========================
-# START CAMERA
+# CAMERA
 # =========================
 
 cap = cv2.VideoCapture(0)
 
+prediction_history = []
+
+last_alarm_time = 0
+
+# =========================
+# MAIN LOOP
+# =========================
+
 while True:
+
+    start = time.time()
 
     ret, frame = cap.read()
 
     if not ret:
         break
 
-    h, w, _ = frame.shape
+    frame = cv2.flip(frame, 1)
 
     # =========================
-    # ROI LEBIH KECIL
+    # ROI TENGAH
     # =========================
 
-    x1 = int(w * 0.42)
-    y1 = int(h * 0.42)
+    roi = detect_fabric(frame)
 
-    x2 = int(w * 0.58)
-    y2 = int(h * 0.58)
+    if roi is not None:
 
-    roi = frame[y1:y2, x1:x2]
+        original_roi = roi.copy()
+
+        # =========================
+        # PREPROCESS
+        # =========================
+
+        processed = preprocess_image(roi)
+
+        # =========================
+        # GLCM FEATURES
+        # =========================
+
+        features = extract_glcm_features(processed)
+
+        features_scaled = scaler.transform(features)
+
+        prediction = model.predict(features_scaled)[0]
+
+        probabilities = model.predict_proba(features_scaled)[0]
+
+        confidence = max(probabilities) * 100
+
+        # =========================
+        # DETECT DEFECT
+        # =========================
+
+        gray = cv2.cvtColor(original_roi, cv2.COLOR_BGR2GRAY)
+
+        blur = cv2.GaussianBlur(gray, (5,5), 0)
+
+        # cari area gelap
+        thresh = cv2.threshold(
+            blur,
+            60,
+            255,
+            cv2.THRESH_BINARY_INV
+        )[1]
+
+        contours, _ = cv2.findContours(
+            thresh,
+            cv2.RETR_EXTERNAL,
+            cv2.CHAIN_APPROX_SIMPLE
+        )
+
+        defect_found = False
+
+        for cnt in contours:
+
+            area = cv2.contourArea(cnt)
+
+            # filter noise kecil
+            if area > 40:
+
+                x, y, w, h = cv2.boundingRect(cnt)
+
+                ratio = w / float(h)
+
+                # filter bentuk defect
+                if 0.2 < ratio < 5:
+
+                    defect_found = True
+
+                    prediction = "rusak"
+
+                    # bounding box defect
+                    cv2.rectangle(
+                        roi,
+                        (x, y),
+                        (x+w, y+h),
+                        (0, 0, 255),
+                        2
+                    )
+
+                    cv2.putText(
+                        roi,
+                        "DEFECT",
+                        (x, y - 5),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.5,
+                        (0,0,255),
+                        2
+                    )
+
+        # =========================
+        # STABILIZER
+        # =========================
+
+        prediction_history.append(prediction)
+
+        if len(prediction_history) > 10:
+            prediction_history.pop(0)
+
+        prediction = max(
+            set(prediction_history),
+            key=prediction_history.count
+        )
+
+        # =========================
+        # DRAW STATUS
+        # =========================
+
+        draw_status(frame, prediction, confidence)
+
+        # =========================
+        # SHOW FEATURES
+        # =========================
+
+        raw = features[0]
+
+        cv2.putText(
+            frame,
+            f"Contrast : {raw[0]:.2f}",
+            (20, 160),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.6,
+            (255,255,255),
+            2
+        )
+
+        cv2.putText(
+            frame,
+            f"Homogeneity : {raw[1]:.2f}",
+            (20, 190),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.6,
+            (255,255,255),
+            2
+        )
+
+        cv2.putText(
+            frame,
+            f"Energy : {raw[2]:.2f}",
+            (20, 220),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.6,
+            (255,255,255),
+            2
+        )
+
+        cv2.putText(
+            frame,
+            f"Correlation : {raw[3]:.2f}",
+            (20, 250),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.6,
+            (255,255,255),
+            2
+        )
+
+        # =========================
+        # ALARM
+        # =========================
+
+        current_time = time.time()
+
+        if prediction == "rusak":
+
+            if current_time - last_alarm_time > 3:
+
+                play_alarm()
+
+                filename = f"output/screenshots/rusak_{int(current_time)}.jpg"
+
+                cv2.imwrite(filename, frame)
+
+                last_alarm_time = current_time
+
+        # =========================
+        # SHOW ROI
+        # =========================
+
+        cv2.imshow("Processed Fabric", roi)
 
     # =========================
-    # PREPROCESSING
+    # FPS
     # =========================
 
-    gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+    end = time.time()
 
-    gray = cv2.resize(gray, (200, 200))
-
-    # blur untuk mengurangi noise
-    gray = cv2.GaussianBlur(gray, (5,5), 0)
-
-    # sharpening untuk memperjelas tekstur
-    kernel = np.array([
-        [0, -1, 0],
-        [-1, 5,-1],
-        [0, -1, 0]
-    ])
-
-    gray = cv2.filter2D(gray, -1, kernel)
-
-    # =========================
-    # FEATURE EXTRACTION
-    # =========================
-
-    features = extract_glcm_features(gray)
-
-    # scaler
-    features = scaler.transform(features)
-
-    # =========================
-    # PREDIKSI
-    # =========================
-
-    prediction = model.predict(features)[0]
-
-    # =========================
-    # WARNA BOX
-    # =========================
-
-    color = (0, 255, 0)
-
-    if prediction == "rusak":
-        color = (0, 0, 255)
-
-    # =========================
-    # TAMPILKAN FITUR
-    # =========================
-
-    raw_features = extract_glcm_features(gray)[0]
+    fps = 1 / (end - start)
 
     cv2.putText(
         frame,
-        f"Contrast: {raw_features[0]:.4f}",
-        (20, 40),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.6,
-        (255,255,255),
-        2
-    )
-
-    cv2.putText(
-        frame,
-        f"Homogeneity: {raw_features[1]:.4f}",
-        (20, 70),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.6,
-        (255,255,255),
-        2
-    )
-
-    cv2.putText(
-        frame,
-        f"Energy: {raw_features[2]:.4f}",
-        (20, 100),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.6,
-        (255,255,255),
-        2
-    )
-
-    cv2.putText(
-        frame,
-        f"Correlation: {raw_features[3]:.4f}",
-        (20, 130),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.6,
-        (255,255,255),
-        2
-    )
-
-    # =========================
-    # BOX & LABEL
-    # =========================
-
-    cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
-
-    cv2.putText(
-        frame,
-        f"Hasil: {prediction}",
-        (x1, y1 - 10),
+        f"FPS : {int(fps)}",
+        (20, 120),
         cv2.FONT_HERSHEY_SIMPLEX,
         0.8,
-        color,
+        (255,255,0),
+        2
+    )
+
+    # =========================
+    # GUIDE
+    # =========================
+
+    cv2.putText(
+        frame,
+        "Arahkan kain ke tengah kamera",
+        (20, frame.shape[0] - 20),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.7,
+        (0,255,255),
         2
     )
 
@@ -175,12 +265,18 @@ while True:
     # SHOW
     # =========================
 
-    cv2.imshow("ROI", gray)
     cv2.imshow("Fabric Defect Detection", frame)
 
-    # keluar
+    # =========================
+    # EXIT
+    # =========================
+
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
+
+# =========================
+# RELEASE
+# =========================
 
 cap.release()
 cv2.destroyAllWindows()
