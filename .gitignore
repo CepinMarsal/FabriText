@@ -10,8 +10,6 @@ venv/
 dataset/
 dataset_processed/
 
-# Feature hasil ekstraksi
-features/
 *.csv
 
 # Model hasil training
