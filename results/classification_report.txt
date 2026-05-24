@@ -1,3 +1,17 @@
+====================================
+ HASIL EVALUASI MODEL KNN
+====================================
+
+Akurasi Model : 73.89%
+Waktu Training : 0.0070 detik
+Waktu Prediksi : 0.0076 detik
+Dimensi Fitur : 5
+Jumlah Data : 781
+
+====================================
+ CLASSIFICATION REPORT
+====================================
+
               precision    recall  f1-score   support
 
         hole       0.74      0.57      0.65        40

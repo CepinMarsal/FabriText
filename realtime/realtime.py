@@ -12,10 +12,10 @@ from skimage.feature import (
 # LOAD MODEL
 # =========================
 
-with open('model_knn_kain.pkl', 'rb') as f:
+with open('../results/model_knn_kain.pkl', 'rb') as f:
     knn_model = pickle.load(f)
 
-with open('scaler_knn_kain.pkl', 'rb') as f:
+with open('../results/scaler_knn_kain.pkl', 'rb') as f:
     scaler = pickle.load(f)
 
 print("Model berhasil dimuat!")

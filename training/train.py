@@ -1,5 +1,7 @@
 import pandas as pd
 import pickle
+import time
+import os
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
@@ -15,19 +17,37 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 # =========================
-# LOAD DATASET
+# BUAT FOLDER
+# =========================
+
+os.makedirs(
+    '../models',
+    exist_ok=True
+)
+
+os.makedirs(
+    '../results',
+    exist_ok=True
+)
+
+# =========================
+# LOAD CSV
 # =========================
 
 csv_path = '../results/hasil_ekstraksi_glcm_kelas.csv'
 
-df = pd.read_csv(csv_path)
+df = pd.read_csv(
+    csv_path
+)
 
 print("DATASET BERHASIL DIBACA")
 
-print(f"Total data : {len(df)}")
+print(
+    f"Total data : {len(df)}"
+)
 
 # =========================
-# FITUR DAN LABEL
+# FITUR & LABEL
 # =========================
 
 X = df[
@@ -43,7 +63,9 @@ X = df[
 y = df['Kelas']
 
 print()
-print("FITUR DAN LABEL BERHASIL DIPISAH")
+print(
+    "FITUR DAN LABEL BERHASIL DIPISAH"
+)
 
 # =========================
 # SPLIT DATA
@@ -60,8 +82,13 @@ X_train, X_test, y_train, y_test = train_test_split(
 print()
 print("SPLIT DATA SELESAI")
 
-print(f"Data training : {len(X_train)}")
-print(f"Data testing  : {len(X_test)}")
+print(
+    f"Data training : {len(X_train)}"
+)
+
+print(
+    f"Data testing  : {len(X_test)}"
+)
 
 # =========================
 # NORMALISASI
@@ -69,15 +96,21 @@ print(f"Data testing  : {len(X_test)}")
 
 scaler = StandardScaler()
 
-X_train_scaled = scaler.fit_transform(X_train)
+X_train_scaled = scaler.fit_transform(
+    X_train
+)
 
-X_test_scaled = scaler.transform(X_test)
+X_test_scaled = scaler.transform(
+    X_test
+)
 
 print()
-print("NORMALISASI DATA SELESAI")
+print(
+    "NORMALISASI DATA SELESAI"
+)
 
 # =========================
-# TRAINING KNN
+# TRAINING
 # =========================
 
 nilai_k = 5
@@ -86,26 +119,62 @@ knn_model = KNeighborsClassifier(
     n_neighbors=nilai_k
 )
 
+# =========================
+# HITUNG WAKTU TRAINING
+# =========================
+
+start_time = time.time()
+
 knn_model.fit(
     X_train_scaled,
     y_train
 )
 
-print()
-print("TRAINING MODEL KNN SELESAI")
+end_time = time.time()
 
-print(f"Nilai K : {nilai_k}")
+training_time = (
+    end_time - start_time
+)
+
+print()
+print(
+    "TRAINING MODEL KNN SELESAI"
+)
+
+print(
+    f"Nilai K : {nilai_k}"
+)
+
+print(
+    f"Waktu Training : "
+    f"{training_time:.4f} detik"
+)
 
 # =========================
 # PREDIKSI
 # =========================
 
+predict_start = time.time()
+
 y_pred = knn_model.predict(
     X_test_scaled
 )
 
+predict_end = time.time()
+
+predict_time = (
+    predict_end - predict_start
+)
+
 print()
-print("PREDIKSI DATA TESTING SELESAI")
+print(
+    "PREDIKSI DATA TESTING SELESAI"
+)
+
+print(
+    f"Waktu Prediksi : "
+    f"{predict_time:.4f} detik"
+)
 
 # =========================
 # AKURASI
@@ -117,7 +186,9 @@ accuracy = accuracy_score(
 )
 
 print()
-print("HASIL AKURASI MODEL")
+print(
+    "HASIL AKURASI MODEL"
+)
 
 print(
     f"Akurasi Model KNN : "
@@ -145,7 +216,9 @@ kelas = [
     'stain'
 ]
 
-plt.figure(figsize=(8,6))
+plt.figure(
+    figsize=(8,6)
+)
 
 sns.heatmap(
     cm,
@@ -170,10 +243,6 @@ plt.ylabel(
     'True Class'
 )
 
-# =========================
-# SAVE CONFUSION MATRIX
-# =========================
-
 plt.savefig(
     '../results/confusion_matrix_knn.png'
 )
@@ -181,7 +250,9 @@ plt.savefig(
 plt.show()
 
 print()
-print("CONFUSION MATRIX BERHASIL DISIMPAN")
+print(
+    "CONFUSION MATRIX BERHASIL DISIMPAN"
+)
 
 # =========================
 # CLASSIFICATION REPORT
@@ -193,23 +264,82 @@ report = classification_report(
 )
 
 print()
-print("CLASSIFICATION REPORT")
+print(
+    "CLASSIFICATION REPORT"
+)
 
 print(report)
 
 # =========================
-# SAVE CLASSIFICATION REPORT
+# SAVE REPORT TXT
 # =========================
 
+report_path = (
+    '../results/classification_report.txt'
+)
+
 with open(
-    '../results/classification_report.txt',
+    report_path,
     'w'
 ) as f:
+
+    f.write(
+        "====================================\n"
+    )
+
+    f.write(
+        " HASIL EVALUASI MODEL KNN\n"
+    )
+
+    f.write(
+        "====================================\n\n"
+    )
+
+    f.write(
+        f"Akurasi Model : "
+        f"{accuracy*100:.2f}%\n"
+    )
+
+    f.write(
+        f"Waktu Training : "
+        f"{training_time:.4f} detik\n"
+    )
+
+    f.write(
+        f"Waktu Prediksi : "
+        f"{predict_time:.4f} detik\n"
+    )
+
+    f.write(
+        f"Dimensi Fitur : "
+        f"{X.shape[1]}\n"
+    )
+
+    f.write(
+        f"Jumlah Data : "
+        f"{len(df)}\n"
+    )
+
+    f.write("\n")
+
+    f.write(
+        "====================================\n"
+    )
+
+    f.write(
+        " CLASSIFICATION REPORT\n"
+    )
+
+    f.write(
+        "====================================\n\n"
+    )
 
     f.write(report)
 
 print()
-print("CLASSIFICATION REPORT BERHASIL DISIMPAN")
+print(
+    "CLASSIFICATION REPORT BERHASIL DISIMPAN"
+)
 
 # =========================
 # SAVE MODEL
@@ -226,7 +356,9 @@ with open(
     )
 
 print()
-print("MODEL KNN BERHASIL DISIMPAN")
+print(
+    "MODEL KNN BERHASIL DISIMPAN"
+)
 
 # =========================
 # SAVE SCALER
@@ -242,27 +374,11 @@ with open(
         f
     )
 
-print("SCALER BERHASIL DISIMPAN")
-
-# =========================
-# INFORMASI TAMBAHAN
-# =========================
+print(
+    "SCALER BERHASIL DISIMPAN"
+)
 
 print()
-print("RINGKASAN HASIL TRAINING")
-
-print(f"Jumlah Total Data  : {len(df)}")
-print(f"Jumlah Training    : {len(X_train)}")
-print(f"Jumlah Testing     : {len(X_test)}")
-print(f"Nilai K            : {nilai_k}")
-print(f"Akurasi            : {accuracy*100:.2f}%")
-
-print()
-print("File yang dihasilkan :")
-print("- model_knn_kain.pkl")
-print("- scaler_knn_kain.pkl")
-print("- confusion_matrix_knn.png")
-print("- classification_report.txt")
-
-print()
-print("PROGRAM SELESAI")
+print(
+    "PROGRAM SELESAI"
+)
