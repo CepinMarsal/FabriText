@@ -8,10 +8,7 @@ from skimage.feature import (
     graycoprops
 )
 
-# =========================
 # LOAD MODEL
-# =========================
-
 with open(
     '../results/model_knn_kain.pkl',
     'rb'
@@ -26,48 +23,33 @@ with open(
 
     scaler = pickle.load(f)
 
-# =========================
 # DETECT DEFECT
-# =========================
-
 def detect_defect(frame):
 
     detected = False
     best_conf = 0
     best_rect = None
 
-    # =========================
     # RESIZE
-    # =========================
-
     small = cv2.resize(
         frame,
         (320,240)
     )
 
-    # =========================
     # GRAYSCALE
-    # =========================
-
     gray = cv2.cvtColor(
         small,
         cv2.COLOR_BGR2GRAY
     )
 
-    # =========================
     # BLUR
-    # =========================
-
     blur = cv2.GaussianBlur(
         gray,
         (3,3),
         0
     )
 
-    # =========================
     # EDGE
-    # =========================
-
     edges = cv2.Canny(
         blur,
         40,
@@ -85,20 +67,14 @@ def detect_defect(frame):
         iterations=1
     )
 
-    # =========================
     # FIND CONTOURS
-    # =========================
-
     contours, _ = cv2.findContours(
         edges,
         cv2.RETR_EXTERNAL,
         cv2.CHAIN_APPROX_SIMPLE
     )
 
-    # =========================
     # LOOP CONTOUR
-    # =========================
-
     for contour in contours:
 
         area = cv2.contourArea(
@@ -133,10 +109,7 @@ def detect_defect(frame):
             (256,256)
         )
 
-        # =========================
         # GLCM
-        # =========================
-
         glcm = graycomatrix(
             roi,
             distances=[1],

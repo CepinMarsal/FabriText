@@ -16,10 +16,7 @@ from sklearn.metrics import (
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# =========================
 # BUAT FOLDER
-# =========================
-
 os.makedirs(
     '../models',
     exist_ok=True
@@ -30,10 +27,7 @@ os.makedirs(
     exist_ok=True
 )
 
-# =========================
 # LOAD CSV
-# =========================
-
 csv_path = '../results/hasil_ekstraksi_glcm_kelas.csv'
 
 df = pd.read_csv(
@@ -46,10 +40,7 @@ print(
     f"Total data : {len(df)}"
 )
 
-# =========================
 # FITUR & LABEL
-# =========================
-
 X = df[
     [
         'GLCM_Mean',
@@ -67,10 +58,7 @@ print(
     "FITUR DAN LABEL BERHASIL DIPISAH"
 )
 
-# =========================
 # SPLIT DATA
-# =========================
-
 X_train, X_test, y_train, y_test = train_test_split(
     X,
     y,
@@ -90,10 +78,7 @@ print(
     f"Data testing  : {len(X_test)}"
 )
 
-# =========================
 # NORMALISASI
-# =========================
-
 scaler = StandardScaler()
 
 X_train_scaled = scaler.fit_transform(
@@ -109,20 +94,14 @@ print(
     "NORMALISASI DATA SELESAI"
 )
 
-# =========================
 # TRAINING
-# =========================
-
 nilai_k = 5
 
 knn_model = KNeighborsClassifier(
     n_neighbors=nilai_k
 )
 
-# =========================
 # HITUNG WAKTU TRAINING
-# =========================
-
 start_time = time.time()
 
 knn_model.fit(
@@ -150,10 +129,7 @@ print(
     f"{training_time:.4f} detik"
 )
 
-# =========================
 # PREDIKSI
-# =========================
-
 predict_start = time.time()
 
 y_pred = knn_model.predict(
@@ -176,10 +152,7 @@ print(
     f"{predict_time:.4f} detik"
 )
 
-# =========================
 # AKURASI
-# =========================
-
 accuracy = accuracy_score(
     y_test,
     y_pred
@@ -195,10 +168,7 @@ print(
     f"{accuracy * 100:.2f}%"
 )
 
-# =========================
 # CONFUSION MATRIX
-# =========================
-
 cm = confusion_matrix(
     y_test,
     y_pred
@@ -254,10 +224,7 @@ print(
     "CONFUSION MATRIX BERHASIL DISIMPAN"
 )
 
-# =========================
 # CLASSIFICATION REPORT
-# =========================
-
 report = classification_report(
     y_test,
     y_pred
@@ -270,10 +237,7 @@ print(
 
 print(report)
 
-# =========================
 # SAVE REPORT TXT
-# =========================
-
 report_path = (
     '../results/classification_report.txt'
 )
@@ -282,17 +246,8 @@ with open(
     report_path,
     'w'
 ) as f:
-
     f.write(
-        "====================================\n"
-    )
-
-    f.write(
-        " HASIL EVALUASI MODEL KNN\n"
-    )
-
-    f.write(
-        "====================================\n\n"
+        "HASIL EVALUASI MODEL KNN\n"
     )
 
     f.write(
@@ -323,15 +278,7 @@ with open(
     f.write("\n")
 
     f.write(
-        "====================================\n"
-    )
-
-    f.write(
         " CLASSIFICATION REPORT\n"
-    )
-
-    f.write(
-        "====================================\n\n"
     )
 
     f.write(report)
@@ -341,10 +288,7 @@ print(
     "CLASSIFICATION REPORT BERHASIL DISIMPAN"
 )
 
-# =========================
 # SAVE MODEL
-# =========================
-
 with open(
     '../results/model_knn_kain.pkl',
     'wb'
@@ -360,10 +304,7 @@ print(
     "MODEL KNN BERHASIL DISIMPAN"
 )
 
-# =========================
 # SAVE SCALER
-# =========================
-
 with open(
     '../results/scaler_knn_kain.pkl',
     'wb'

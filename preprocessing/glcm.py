@@ -381,19 +381,13 @@ if __name__ == '__main__':
         if data_fitur:
             df = pd.DataFrame(data_fitur)
 
-            # =========================
             # BUAT FOLDER RESULTS
-            # =========================
-
             results_folder = 'results'
 
             if not os.path.exists(results_folder):
                 os.makedirs(results_folder)
 
-            # =========================
             # SAVE CSV
-            # =========================
-
             output_csv = os.path.join(
                 results_folder,
                 'hasil_ekstraksi_glcm_kelas.csv'

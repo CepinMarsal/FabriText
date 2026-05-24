@@ -2,29 +2,20 @@ import cv2
 import os
 import time
 import winsound
-
 from datetime import datetime
-
 from alarm import detect_defect
 
-# =========================
 # FOLDER HASIL
-# =========================
-
 save_folder = '../results/hasil_deteksi'
 
 if not os.path.exists(save_folder):
-
     os.makedirs(save_folder)
 
 print("Realtime Deteksi Kain")
 print("Q = Keluar")
 print("S = Simpan Screenshot")
 
-# =========================
 # WEBCAM
-# =========================
-
 cap = cv2.VideoCapture(0)
 
 cap.set(
@@ -39,12 +30,8 @@ cap.set(
 
 prev_time = 0
 
-# =========================
 # LOOP
-# =========================
-
 while True:
-
     ret, frame = cap.read()
 
     if not ret:
@@ -57,18 +44,12 @@ while True:
 
     display = frame.copy()
 
-    # =========================
     # DETECTION
-    # =========================
-
     detected, best_rect, conf, edges = detect_defect(
         frame
     )
-
-    # =========================
+    
     # DRAW RESULT
-    # =========================
-
     if detected and best_rect is not None:
 
         bx, by, bw, bh = best_rect
@@ -134,10 +115,7 @@ while True:
             3
         )
 
-    # =========================
     # FPS
-    # =========================
-
     current_time = time.time()
 
     fps = 1 / (
@@ -156,10 +134,7 @@ while True:
         2
     )
 
-    # =========================
     # TIMESTAMP
-    # =========================
-
     now = datetime.now().strftime(
         "%d-%m-%Y %H:%M:%S"
     )
@@ -174,10 +149,7 @@ while True:
         1
     )
 
-    # =========================
     # SHOW
-    # =========================
-
     cv2.imshow(
         'Realtime Fabric Defect Detection',
         display
@@ -188,12 +160,8 @@ while True:
         edges
     )
 
-    # =========================
     # KEYBOARD
-    # =========================
-
     key = cv2.waitKey(1)
-
     if key == ord('s'):
 
         filename = datetime.now().strftime(
@@ -215,10 +183,6 @@ while True:
     if key == ord('q'):
         break
 
-# =========================
 # RELEASE
-# =========================
-
 cap.release()
-
 cv2.destroyAllWindows()
