@@ -14,13 +14,21 @@ from sklearn.metrics import (
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-csv_path = 'hasil_ekstraksi_glcm_kelas.csv'
+# =========================
+# LOAD DATASET
+# =========================
+
+csv_path = '../results/hasil_ekstraksi_glcm_kelas.csv'
 
 df = pd.read_csv(csv_path)
 
 print("DATASET BERHASIL DIBACA")
 
 print(f"Total data : {len(df)}")
+
+# =========================
+# FITUR DAN LABEL
+# =========================
 
 X = df[
     [
@@ -37,6 +45,10 @@ y = df['Kelas']
 print()
 print("FITUR DAN LABEL BERHASIL DIPISAH")
 
+# =========================
+# SPLIT DATA
+# =========================
+
 X_train, X_test, y_train, y_test = train_test_split(
     X,
     y,
@@ -51,6 +63,10 @@ print("SPLIT DATA SELESAI")
 print(f"Data training : {len(X_train)}")
 print(f"Data testing  : {len(X_test)}")
 
+# =========================
+# NORMALISASI
+# =========================
+
 scaler = StandardScaler()
 
 X_train_scaled = scaler.fit_transform(X_train)
@@ -59,6 +75,10 @@ X_test_scaled = scaler.transform(X_test)
 
 print()
 print("NORMALISASI DATA SELESAI")
+
+# =========================
+# TRAINING KNN
+# =========================
 
 nilai_k = 5
 
@@ -76,12 +96,20 @@ print("TRAINING MODEL KNN SELESAI")
 
 print(f"Nilai K : {nilai_k}")
 
+# =========================
+# PREDIKSI
+# =========================
+
 y_pred = knn_model.predict(
     X_test_scaled
 )
 
 print()
 print("PREDIKSI DATA TESTING SELESAI")
+
+# =========================
+# AKURASI
+# =========================
 
 accuracy = accuracy_score(
     y_test,
@@ -95,6 +123,10 @@ print(
     f"Akurasi Model KNN : "
     f"{accuracy * 100:.2f}%"
 )
+
+# =========================
+# CONFUSION MATRIX
+# =========================
 
 cm = confusion_matrix(
     y_test,
@@ -138,24 +170,53 @@ plt.ylabel(
     'True Class'
 )
 
+# =========================
+# SAVE CONFUSION MATRIX
+# =========================
+
 plt.savefig(
-    'confusion_matrix_knn.png'
+    '../results/confusion_matrix_knn.png'
 )
 
 plt.show()
 
 print()
-print("CLASSIFICATION REPORT")
+print("CONFUSION MATRIX BERHASIL DISIMPAN")
 
-print(
-    classification_report(
-        y_test,
-        y_pred
-    )
+# =========================
+# CLASSIFICATION REPORT
+# =========================
+
+report = classification_report(
+    y_test,
+    y_pred
 )
 
+print()
+print("CLASSIFICATION REPORT")
+
+print(report)
+
+# =========================
+# SAVE CLASSIFICATION REPORT
+# =========================
+
 with open(
-    'model_knn_kain.pkl',
+    '../results/classification_report.txt',
+    'w'
+) as f:
+
+    f.write(report)
+
+print()
+print("CLASSIFICATION REPORT BERHASIL DISIMPAN")
+
+# =========================
+# SAVE MODEL
+# =========================
+
+with open(
+    '../results/model_knn_kain.pkl',
     'wb'
 ) as f:
 
@@ -167,8 +228,12 @@ with open(
 print()
 print("MODEL KNN BERHASIL DISIMPAN")
 
+# =========================
+# SAVE SCALER
+# =========================
+
 with open(
-    'scaler_knn_kain.pkl',
+    '../results/scaler_knn_kain.pkl',
     'wb'
 ) as f:
 
@@ -178,6 +243,26 @@ with open(
     )
 
 print("SCALER BERHASIL DISIMPAN")
+
+# =========================
+# INFORMASI TAMBAHAN
+# =========================
+
+print()
+print("RINGKASAN HASIL TRAINING")
+
+print(f"Jumlah Total Data  : {len(df)}")
+print(f"Jumlah Training    : {len(X_train)}")
+print(f"Jumlah Testing     : {len(X_test)}")
+print(f"Nilai K            : {nilai_k}")
+print(f"Akurasi            : {accuracy*100:.2f}%")
+
+print()
+print("File yang dihasilkan :")
+print("- model_knn_kain.pkl")
+print("- scaler_knn_kain.pkl")
+print("- confusion_matrix_knn.png")
+print("- classification_report.txt")
 
 print()
 print("PROGRAM SELESAI")

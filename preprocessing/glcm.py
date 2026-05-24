@@ -2,6 +2,7 @@ import numpy as np
 import cv2
 import os
 import pandas as pd
+from preprocessing import preprocess_image
 
 # FAST GLCM
 def fast_glcm(
@@ -301,10 +302,7 @@ if __name__ == '__main__':
                     )
 
                     # BACA GAMBAR
-                    img = cv2.imread(
-                        img_path,
-                        cv2.IMREAD_GRAYSCALE
-                    )
+                    img = cv2.imread(img_path)
 
                     if img is None:
                         print(
@@ -313,10 +311,7 @@ if __name__ == '__main__':
                         continue
 
                     # RESIZE
-                    img = cv2.resize(
-                        img,
-                        (256, 256)
-                    )
+                    img = preprocess_image(img)
 
                     # EKSTRAKSI FITUR
                     f_mean = fast_glcm_mean(
@@ -386,7 +381,21 @@ if __name__ == '__main__':
         if data_fitur:
             df = pd.DataFrame(data_fitur)
 
-            output_csv = (
+            # =========================
+            # BUAT FOLDER RESULTS
+            # =========================
+
+            results_folder = 'results'
+
+            if not os.path.exists(results_folder):
+                os.makedirs(results_folder)
+
+            # =========================
+            # SAVE CSV
+            # =========================
+
+            output_csv = os.path.join(
+                results_folder,
                 'hasil_ekstraksi_glcm_kelas.csv'
             )
 

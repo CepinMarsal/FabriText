@@ -1,0 +1,10 @@
+              precision    recall  f1-score   support
+
+        hole       0.74      0.57      0.65        40
+       lines       0.78      0.81      0.79        31
+      normal       0.70      0.75      0.73        44
+       stain       0.74      0.83      0.79        42
+
+    accuracy                           0.74       157
+   macro avg       0.74      0.74      0.74       157
+weighted avg       0.74      0.74      0.74       157
