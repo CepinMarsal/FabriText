@@ -8,32 +8,23 @@ from skimage.feature import (
     graycoprops
 )
 
-# =========================
 # LOAD MODEL
-# =========================
-
-with open('model_knn_kain.pkl', 'rb') as f:
+with open('../results/model_knn_kain.pkl', 'rb') as f:
     knn_model = pickle.load(f)
 
-with open('scaler_knn_kain.pkl', 'rb') as f:
+with open('../results/scaler_knn_kain.pkl', 'rb') as f:
     scaler = pickle.load(f)
 
 print("Model berhasil dimuat!")
 print("Tekan Q untuk keluar")
 
-# =========================
 # WEBCAM
-# =========================
-
 cap = cv2.VideoCapture(0)
 
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 
-# =========================
 # LOOP
-# =========================
-
 while True:
 
     ret, frame = cap.read()
@@ -47,10 +38,7 @@ while True:
 
     h, w = frame.shape[:2]
 
-    # =========================
-    # ROI TENGAH
-    # =========================
-
+    # ROI
     box_size = 100
 
     x1 = w//2 - box_size//2
@@ -63,11 +51,8 @@ while True:
         y1:y2,
         x1:x2
     ]
-
-    # =========================
+    
     # PREPROCESS
-    # =========================
-
     gray = cv2.cvtColor(
         roi,
         cv2.COLOR_BGR2GRAY
@@ -88,10 +73,7 @@ while True:
         0
     )
 
-    # =========================
     # GLCM
-    # =========================
-
     glcm = graycomatrix(
         gray,
         distances=[1,2,3],
@@ -127,10 +109,7 @@ while True:
 
     mean = np.mean(gray)
 
-    # =========================
     # FEATURE
-    # =========================
-
     fitur = pd.DataFrame(
         [[
             mean,
@@ -148,18 +127,12 @@ while True:
         ]
     )
 
-    # =========================
     # SCALER
-    # =========================
-
     fitur_scaled = scaler.transform(
         fitur
     )
 
-    # =========================
     # PREDIKSI
-    # =========================
-
     hasil = knn_model.predict(
         fitur_scaled
     )[0]
@@ -170,10 +143,7 @@ while True:
         )
     )
 
-    # =========================
     # EDGE CHECK
-    # =========================
-
     edges = cv2.Canny(
         gray,
         100,
@@ -184,10 +154,7 @@ while True:
         edges > 0
     ) / (box_size * box_size)
 
-    # =========================
     # FINAL RESULT
-    # =========================
-
     if (
         hasil != 'normal'
         and confidence > 0.55
@@ -201,11 +168,8 @@ while True:
 
         warna = (0,255,0)
         text = 'NORMAL'
-
-    # =========================
+    
     # DRAW BOX
-    # =========================
-
     cv2.rectangle(
         display,
         (x1,y1),
@@ -224,10 +188,7 @@ while True:
         3
     )
 
-    # =========================
     # DEBUG
-    # =========================
-
     cv2.putText(
         display,
         f'Conf: {confidence:.2f}',
@@ -248,10 +209,7 @@ while True:
         2
     )
 
-    # =========================
     # SHOW
-    # =========================
-
     cv2.imshow(
         'Realtime Deteksi Kain',
         display
@@ -262,10 +220,6 @@ while True:
     if key == ord('q'):
         break
 
-# =========================
 # RELEASE
-# =========================
-
 cap.release()
-
 cv2.destroyAllWindows()
