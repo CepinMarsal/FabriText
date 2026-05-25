@@ -16,7 +16,8 @@
 
         <div class="tabs">
             <button class="tab-btn active" data-target="upload-tab">Unggah Gambar</button>
-            <button class="tab-btn" data-target="camera-tab">Kamera Realtime</button>
+            <button class="tab-btn" data-target="camera-tab">Kamera GLCM</button>
+            <button class="tab-btn" data-target="lbp-tab">Kamera LBP</button>
         </div>
         
         <main>
@@ -62,6 +63,13 @@
                         <label for="camera-select">Pilih Kamera:</label>
                         <select id="camera-select" class="form-select"></select>
                     </div>
+                    <div class="select-container">
+                        <label for="mode-select">Mode Deteksi:</label>
+                        <select id="mode-select" class="form-select">
+                            <option value="fixed">Kotak Tengah (Fixed)</option>
+                            <option value="tracking">Tracking Lokasi Kerusakan</option>
+                        </select>
+                    </div>
                     <button id="start-camera-btn" class="btn btn-primary">Mulai Kamera</button>
                     <button id="stop-camera-btn" class="btn btn-danger hidden">Hentikan Kamera</button>
                 </div>
@@ -80,7 +88,31 @@
                             <span id="live-status-badge" class="status-badge status-normal">NORMAL</span>
                             <div class="metrics">
                                 <span id="conf-metric">Conf: 0.00</span>
-                                <span id="edge-metric">Edge: 0.000</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- LBP TAB -->
+            <div id="lbp-tab" class="tab-content hidden">
+                <div class="camera-controls">
+                    <div class="select-container">
+                        <label for="lbp-camera-select">Pilih Kamera:</label>
+                        <select id="lbp-camera-select" class="form-select"></select>
+                    </div>
+                    <button id="start-lbp-btn" class="btn btn-primary">Mulai Kamera LBP</button>
+                    <button id="stop-lbp-btn" class="btn btn-danger hidden">Hentikan Kamera</button>
+                </div>
+
+                <div id="lbp-container" class="hidden">
+                    <video id="lbp-video" autoplay playsinline class="hidden"></video>
+                    <canvas id="lbp-canvas" class="hidden"></canvas>
+                    <div class="video-wrapper">
+                        <img id="lbp-feed" src="" alt="LBP Live Feed">
+                        <div class="live-status">
+                            <span id="lbp-status-badge" class="status-badge status-normal">NORMAL</span>
+                            <div class="metrics">
+                                <span id="lbp-conf-metric">Conf: 0%</span>
                             </div>
                         </div>
                     </div>
