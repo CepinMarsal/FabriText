@@ -8,10 +8,8 @@ import winsound  # Diperlukan untuk triger alarm suara Bip Windows
 import traceback
 from flask import Flask, request, jsonify, render_template
 
-from skimage.feature import (
-    graycomatrix,
-    graycoprops
-)
+from skimage.feature import graycomatrix, graycoprops, local_binary_pattern
+from sklearn.neighbors import KNeighborsClassifier
 
 # Mengimpor fungsi deteksi otomatis dari sub-folder realtime Anda (sesuai skrip validasi)
 from realtime.alarm import detect_defect

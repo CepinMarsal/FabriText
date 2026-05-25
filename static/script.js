@@ -22,6 +22,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (targetId !== 'camera-tab') {
                 stopCamera();
             }
+            if (targetId !== 'lbp-tab') {
+                stopLbpCamera();
+            }
         });
     });
 
@@ -126,6 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- CAMERA LOGIC ---
     const cameraSelect = document.getElementById('camera-select');
+    const modeSelect = document.getElementById('mode-select');
     const startCameraBtn = document.getElementById('start-camera-btn');
     const stopCameraBtn = document.getElementById('stop-camera-btn');
     const cameraContainer = document.getElementById('camera-container');
@@ -134,20 +138,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const cameraFeed = document.getElementById('camera-feed');
     const liveStatusBadge = document.getElementById('live-status-badge');
     const confMetric = document.getElementById('conf-metric');
-    const edgeMetric = document.getElementById('edge-metric');
 
     let stream = null;
     let cameraInterval = null;
     let isProcessing = false;
 
-    // Enumerate cameras
+    // Enumerate kamera saat halaman load
     async function populateCameras() {
         try {
-            // Need permission first to see labels on some browsers
-            await navigator.mediaDevices.getUserMedia({ video: true });
+            await navigator.mediaDevices.getUserMedia({ video: true }).then(s => s.getTracks().forEach(t => t.stop()));
             const devices = await navigator.mediaDevices.enumerateDevices();
-            const videoDevices = devices.filter(device => device.kind === 'videoinput');
-            
+            const videoDevices = devices.filter(d => d.kind === 'videoinput');
             cameraSelect.innerHTML = '';
             videoDevices.forEach((device, index) => {
                 const option = document.createElement('option');
@@ -156,9 +157,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 cameraSelect.appendChild(option);
             });
         } catch (err) {
-            console.error("Gagal mengakses daftar kamera", err);
+            console.error('Gagal enumerate kamera', err);
             const option = document.createElement('option');
-            option.text = "Kamera tidak ditemukan / tidak diizinkan";
+            option.text = 'Kamera tidak ditemukan / tidak diizinkan';
             cameraSelect.appendChild(option);
         }
     }
@@ -167,31 +168,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function startCamera() {
         const deviceId = cameraSelect.value;
-        if (!deviceId) return;
-
         const constraints = {
-            video: { deviceId: { exact: deviceId }, width: { ideal: 640 }, height: { ideal: 480 } }
+            video: deviceId
+                ? { deviceId: { exact: deviceId }, width: { ideal: 640 }, height: { ideal: 480 } }
+                : { width: { ideal: 640 }, height: { ideal: 480 } }
         };
 
         try {
             stream = await navigator.mediaDevices.getUserMedia(constraints);
             videoElement.srcObject = stream;
-            
+
             startCameraBtn.classList.add('hidden');
             stopCameraBtn.classList.remove('hidden');
             cameraContainer.classList.remove('hidden');
 
-            // Wait for video to be ready
             videoElement.onloadedmetadata = () => {
                 videoElement.play();
                 canvasElement.width = videoElement.videoWidth;
                 canvasElement.height = videoElement.videoHeight;
-                // Start sending frames
-                cameraInterval = setInterval(processFrame, 500); // 2 FPS to not overload server
+                cameraInterval = setInterval(processFrame, 500);
             };
         } catch (err) {
-            console.error("Gagal memulai kamera", err);
-            alert("Gagal memulai kamera: " + err.message);
+            console.error('Gagal memulai kamera', err);
+            alert('Gagal memulai kamera: ' + err.message);
         }
     }
 
@@ -222,7 +221,8 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
             const frameBase64 = canvasElement.toDataURL('image/jpeg', 0.8);
 
-            const response = await fetch('/predict_frame', {
+            const endpoint = modeSelect.value === 'fixed' ? '/predict_frame_fixed' : '/predict_frame';
+            const response = await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ image: frameBase64 })
@@ -234,7 +234,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 liveStatusBadge.textContent = data.status;
                 liveStatusBadge.className = data.status === 'NORMAL' ? 'status-badge status-normal' : 'status-badge status-rusak';
                 confMetric.textContent = `Conf: ${data.confidence}`;
-                edgeMetric.textContent = `Edge: ${data.edge_density}`;
             }
         } catch (err) {
             console.error("Frame processing error:", err);
@@ -242,4 +241,107 @@ document.addEventListener('DOMContentLoaded', () => {
             isProcessing = false;
         }
     }
+
+    // --- LBP CAMERA LOGIC ---
+    const lbpCameraSelect = document.getElementById('lbp-camera-select');
+    const startLbpBtn = document.getElementById('start-lbp-btn');
+    const stopLbpBtn = document.getElementById('stop-lbp-btn');
+    const lbpContainer = document.getElementById('lbp-container');
+    const lbpVideo = document.getElementById('lbp-video');
+    const lbpCanvas = document.getElementById('lbp-canvas');
+    const lbpFeed = document.getElementById('lbp-feed');
+    const lbpStatusBadge = document.getElementById('lbp-status-badge');
+    const lbpConfMetric = document.getElementById('lbp-conf-metric');
+
+    let lbpStream = null;
+    let lbpInterval = null;
+    let lbpProcessing = false;
+
+    async function startLbpCamera() {
+        const deviceId = lbpCameraSelect.value;
+        const constraints = {
+            video: deviceId
+                ? { deviceId: { exact: deviceId }, width: { ideal: 640 }, height: { ideal: 480 } }
+                : { width: { ideal: 640 }, height: { ideal: 480 } }
+        };
+        try {
+            lbpStream = await navigator.mediaDevices.getUserMedia(constraints);
+            lbpVideo.srcObject = lbpStream;
+            startLbpBtn.classList.add('hidden');
+            stopLbpBtn.classList.remove('hidden');
+            lbpContainer.classList.remove('hidden');
+            lbpVideo.onloadedmetadata = () => {
+                lbpVideo.play();
+                lbpCanvas.width = lbpVideo.videoWidth;
+                lbpCanvas.height = lbpVideo.videoHeight;
+                lbpInterval = setInterval(processLbpFrame, 500);
+            };
+        } catch (err) {
+            console.error('Gagal memulai kamera LBP', err);
+            alert('Gagal memulai kamera: ' + err.message);
+        }
+    }
+
+    function stopLbpCamera() {
+        if (lbpStream) {
+            lbpStream.getTracks().forEach(t => t.stop());
+            lbpStream = null;
+        }
+        if (lbpInterval) {
+            clearInterval(lbpInterval);
+            lbpInterval = null;
+        }
+        startLbpBtn.classList.remove('hidden');
+        stopLbpBtn.classList.add('hidden');
+        lbpContainer.classList.add('hidden');
+    }
+
+    startLbpBtn.addEventListener('click', startLbpCamera);
+    stopLbpBtn.addEventListener('click', stopLbpCamera);
+
+    async function processLbpFrame() {
+        if (lbpProcessing || !lbpStream) return;
+        lbpProcessing = true;
+        try {
+            const ctx = lbpCanvas.getContext('2d');
+            ctx.drawImage(lbpVideo, 0, 0, lbpCanvas.width, lbpCanvas.height);
+            const frameBase64 = lbpCanvas.toDataURL('image/jpeg', 0.8);
+
+            const response = await fetch('/predict_frame_lbp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image: frameBase64 })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                lbpFeed.src = data.image_base64;
+                lbpStatusBadge.textContent = data.status;
+                lbpStatusBadge.className = data.status === 'NORMAL' ? 'status-badge status-normal' : 'status-badge status-rusak';
+                lbpConfMetric.textContent = `Conf: ${data.confidence}`;
+            }
+        } catch (err) {
+            console.error('LBP frame error:', err);
+        } finally {
+            lbpProcessing = false;
+        }
+    }
+
+    // Populate LBP camera dropdown saat tab LBP dibuka
+    document.querySelector('[data-target="lbp-tab"]').addEventListener('click', async () => {
+        stopLbpCamera();
+        try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const videoDevices = devices.filter(d => d.kind === 'videoinput');
+            lbpCameraSelect.innerHTML = '';
+            videoDevices.forEach((device, index) => {
+                const option = document.createElement('option');
+                option.value = device.deviceId;
+                option.text = device.label || `Kamera ${index + 1}`;
+                lbpCameraSelect.appendChild(option);
+            });
+        } catch (err) {
+            console.error('Gagal enumerate kamera LBP', err);
+        }
+    });
 });
