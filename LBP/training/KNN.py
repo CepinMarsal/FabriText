@@ -59,35 +59,6 @@ print(f"=======================================")
 print(f"AKURASI KNN SETELAH EKSPOR FOLDER: {accuracy_score(y_test, y_pred) * 100:.2f}%")
 print(f"=======================================\n")
 
-# Cetak Classification Report (teks)
-print("CLASSIFICATION REPORT (KNN - Data Folder LBP):")
-report_str = classification_report(y_test, y_pred)
-print(report_str)
-
-# Auto-generate CSV (rapi) dari classification report saat muncul hasil
-report_dict = classification_report(y_test, y_pred, output_dict=True)
-
-rows = []
-for label in ["hole", "normal", "stain", "accuracy", "macro avg", "weighted avg"]:
-    metrics = report_dict[label]
-
-    if label == "accuracy":
-        # simpan accuracy dalam bentuk nilai (0..1) * 100 agar lebih mudah dibaca
-        rows.append({"label": label, "precision": "", "recall": "", "f1-score": "", "support": f"{metrics * 100:.2f}%"})
-    elif isinstance(metrics, dict):
-        rows.append({
-            "label": label,
-            "precision": f"{metrics.get('precision', 0):.2f}",
-            "recall": f"{metrics.get('recall', 0):.2f}",
-            "f1-score": f"{metrics.get('f1-score', 0):.2f}",
-            "support": int(round(metrics.get('support', 0)))
-        })
-
-report_csv_path = r"C:\Users\Asus\Kampus\semester4\Pengolahan Citra Digital\FabriText\LBP\hasil_evaluasi_knn_classification_report.csv"
-report_df = pd.DataFrame(rows, columns=["label", "precision", "recall", "f1-score", "support"])
-report_df.to_csv(report_csv_path, index=False)
-print(f"\nClassification report disimpan ke: {report_csv_path}")
-
 # Cetak Confusion Matrix
 cm = confusion_matrix(y_test, y_pred)
 plt.figure(figsize=(5,4))
@@ -97,4 +68,3 @@ plt.title('Confusion Matrix - Sumber Data Folder LBP')
 plt.ylabel('Kategori Asli')
 plt.xlabel('Hasil Prediksi KNN')
 plt.show()
-

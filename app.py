@@ -4,6 +4,8 @@ import pickle
 import pandas as pd
 import numpy as np
 import base64
+import winsound  # Diperlukan untuk triger alarm suara Bip Windows
+import traceback
 from flask import Flask, request, jsonify, render_template
 
 from skimage.feature import (
@@ -11,11 +13,15 @@ from skimage.feature import (
     graycoprops
 )
 
+# Mengimpor fungsi deteksi otomatis dari sub-folder realtime Anda (sesuai skrip validasi)
+from realtime.alarm import detect_defect
+
+# Inisialisasi Aplikasi Flask
 app = Flask(__name__)
 
-# =========================
-# LOAD MODEL
-# =========================
+# ==========================================
+# KONFIGURASI PATH DAN LOAD MODEL MALAIKAT
+# ==========================================
 MODEL_PATH = os.path.join('results', 'model_knn_kain.pkl')
 SCALER_PATH = os.path.join('results', 'scaler_knn_kain.pkl')
 
@@ -27,16 +33,22 @@ try:
         knn_model = pickle.load(f)
     with open(SCALER_PATH, 'rb') as f:
         scaler = pickle.load(f)
-    print("Model berhasil dimuat!")
+    print("=== Model & Scaler Berhasil Dimuat! ===")
 except Exception as e:
-    print(f"Gagal memuat model: {e}")
+    print(f"=== GAGAL MEMUAT MODEL: {e} ===")
 
 
+# ==========================================
+# JALUR 1: HALAMAN UTAMA (INDEX)
+# ==========================================
 @app.route('/')
 def index():
     return render_template('index.html')
 
 
+# ==========================================
+# JALUR 2: PREDIKSI VIA UNGGAH FOTO (UPLOAD)
+# ==========================================
 @app.route('/predict', methods=['POST'])
 def predict():
     if 'file' not in request.files:
@@ -47,7 +59,7 @@ def predict():
         return jsonify({"error": "No file selected"}), 400
     
     try:
-        # Read file as numpy array
+        # Membaca file gambar ke format numpy array (OpenCV)
         npimg = np.frombuffer(file.read(), np.uint8)
         img = cv2.imdecode(npimg, cv2.IMREAD_COLOR)
         
@@ -57,7 +69,7 @@ def predict():
         img = cv2.resize(img, (900, 600))
         display = img.copy()
 
-        # Preprocessing
+        # --- Tahap Preprocessing Citra ---
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         blur = cv2.GaussianBlur(gray, (5, 5), 0)
         thresh = cv2.adaptiveThreshold(
@@ -68,7 +80,7 @@ def predict():
         thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
         thresh = cv2.dilate(thresh, kernel, iterations=2)
 
-        # Contours
+        # --- Deteksi Kontur Cacat ---
         contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         best_contour = None
@@ -99,7 +111,7 @@ def predict():
             roi = gray[y:y+h, x:x+w]
             roi = cv2.resize(roi, (256, 256))
 
-            # GLCM Feature
+            # --- Ekstraksi Fitur GLCM ---
             glcm = graycomatrix(
                 roi, distances=[1], angles=[0], levels=256,
                 symmetric=True, normed=True
@@ -115,6 +127,7 @@ def predict():
                 columns=['GLCM_Mean', 'GLCM_Contrast', 'GLCM_Homogeneity', 'GLCM_ASM', 'GLCM_Energy']
             )
 
+            # Normalisasi & Prediksi Model
             fitur_scaled = scaler.transform(fitur)
             hasil_asli = knn_model.predict(fitur_scaled)[0]
 
@@ -129,7 +142,7 @@ def predict():
             cv2.putText(display, 'NORMAL', (30, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 3)
             status = "NORMAL"
 
-        # Convert to base64
+        # Mengubah hasil gambar kembali ke Base64 string teks
         _, buffer = cv2.imencode('.jpg', display)
         img_base64 = base64.b64encode(buffer).decode('utf-8')
 
@@ -139,11 +152,13 @@ def predict():
         })
 
     except Exception as e:
-        import traceback
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
 
+# ==========================================
+# JALUR 3: PREDIKSI LIVE STREAMING (MENGGUNAKAN LOGIKA TEST-REALTIME)
+# ==========================================
 @app.route('/predict_frame', methods=['POST'])
 def predict_frame():
     try:
@@ -152,11 +167,11 @@ def predict_frame():
             return jsonify({"error": "No image data"}), 400
 
         image_data = data['image']
-        # Remove 'data:image/jpeg;base64,' if present
+        # Hilangkan header data:image/jpeg;base64 jika ada
         if ',' in image_data:
             image_data = image_data.split(',')[1]
 
-        # Decode base64 to image
+        # Mengubah data teks string base64 kembali menjadi matriks gambar OpenCV
         img_bytes = base64.b64decode(image_data)
         npimg = np.frombuffer(img_bytes, np.uint8)
         frame = cv2.imdecode(npimg, cv2.IMREAD_COLOR)
@@ -164,102 +179,60 @@ def predict_frame():
         if frame is None:
             return jsonify({"error": "Failed to decode image"}), 400
 
-        # Mirror the frame to match what the user sees in camera
+        # Balikkan orientasi kamera (Mirror effect sesuai test-realtime)
         frame = cv2.flip(frame, 1)
         display = frame.copy()
-        h, w = frame.shape[:2]
 
-        # ROI - exactly as in realtime.py
-        box_size = 100
-        x1 = w // 2 - box_size // 2
-        y1 = h // 2 - box_size // 2
-        x2 = x1 + box_size
-        y2 = y1 + box_size
-
-        # Clamp coordinates
-        x1, y1 = max(0, x1), max(0, y1)
-        x2, y2 = min(w, x2), min(h, y2)
-
-        roi = frame[y1:y2, x1:x2]
-
-        # PREPROCESS
-        gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
-
-        # CLAHE
-        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-        gray = clahe.apply(gray)
-
-        # Blur
-        gray = cv2.GaussianBlur(gray, (3, 3), 0)
-
-        # GLCM
-        glcm = graycomatrix(
-            gray,
-            distances=[1, 2, 3],
-            angles=[0, np.pi/4, np.pi/2],
-            levels=256,
-            symmetric=True,
-            normed=True
-        )
-
-        contrast = graycoprops(glcm, 'contrast').mean()
-        homogeneity = graycoprops(glcm, 'homogeneity').mean()
-        energy = graycoprops(glcm, 'energy').mean()
-        asm = graycoprops(glcm, 'ASM').mean()
-        mean = np.mean(gray)
-
-        # FEATURE
-        fitur = pd.DataFrame(
-            [[mean, contrast, homogeneity, asm, energy]],
-            columns=['GLCM_Mean', 'GLCM_Contrast', 'GLCM_Homogeneity', 'GLCM_ASM', 'GLCM_Energy']
-        )
-
-        # SCALER
-        fitur_scaled = scaler.transform(fitur)
-
-        # PREDIKSI
-        hasil = knn_model.predict(fitur_scaled)[0]
-        confidence = np.max(knn_model.predict_proba(fitur_scaled))
-
-        # EDGE CHECK
-        edges = cv2.Canny(gray, 100, 200)
-        edge_density = np.sum(edges > 0) / (box_size * box_size)
+        # --- EXECUTE DETECTION (Memanggil fungsi dari realtime.alarm) ---
+        detected, best_rect, conf, edges = detect_defect(frame)
 
         status_text = "NORMAL"
 
-        # FINAL RESULT LOGIC
-        if hasil != 'normal' and confidence > 0.55 and edge_density > 0.015:
-            warna = (0, 0, 255)
-            text = 'RUSAK'
+        # --- LOGIKA DRAW RESULT & ALARM (Meniru persis skrip test-realtime Anda) ---
+        if detected and best_rect is not None:
+            bx, by, bw, bh = best_rect
+
+            # Penskalaan koordinat dari resolusi proses biner (320x240) ke resolusi kamera web asli
+            scale_x = frame.shape[1] / 320
+            scale_y = frame.shape[0] / 240
+
+            x1 = int(bx * scale_x)
+            y1 = int(by * scale_y)
+            x2 = int((bx + bw) * scale_x)
+            y2 = int((by + bh) * scale_y)
+
+            # Gambar Kotak Merah Dinamis & Keterangan Cacat
+            cv2.rectangle(display, (x1, y1), (x2, y2), (0, 0, 255), 3)
+            cv2.putText(display, 'RUSAK', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
+            cv2.putText(display, f'Confidence: {conf:.2f}', (x1, y2 + 25), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+
             status_text = "RUSAK"
+
+            # MEMBUNYIKAN SUARA ALARM (Bip internal Windows)
+            winsound.Beep(1000, 300)
         else:
-            warna = (0, 255, 0)
-            text = 'NORMAL'
+            # Jika kondisi kain aman / normal
+            cv2.putText(display, 'NORMAL', (30, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 3)
 
-        # DRAW BOX
-        cv2.rectangle(display, (x1, y1), (x2, y2), warna, 3)
-        cv2.putText(display, text, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 1, warna, 3)
+        # Menghitung kerapatan tepi dari citra biner 'edges' untuk visualisasi dashboard monitor
+        edge_density = np.sum(edges > 0) / (edges.shape[0] * edges.shape[1])
 
-        # DEBUG INFO
-        cv2.putText(display, f'Conf: {confidence:.2f}', (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
-        cv2.putText(display, f'Edge: {edge_density:.3f}', (20, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
-
-        # Convert back to base64
+        # Mengubah hasil frame OpenCV menjadi teks Base64 untuk dikirim balik ke Web Browser
         _, buffer = cv2.imencode('.jpg', display)
         img_base64 = base64.b64encode(buffer).decode('utf-8')
 
         return jsonify({
             "status": status_text,
             "image_base64": f"data:image/jpeg;base64,{img_base64}",
-            "confidence": f"{confidence:.2f}",
+            "confidence": f"{conf:.2f}",
             "edge_density": f"{edge_density:.3f}"
         })
 
     except Exception as e:
-        import traceback
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
 
+# Meluncurkan Aplikasi Server Lokal
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

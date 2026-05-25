@@ -167,19 +167,18 @@ while True:
                 cv2.rectangle(frame, (abs_x, abs_y), (abs_x + abs_w, abs_y + abs_h), warna_indikator, 3)
                 
                 if not cacat_ditemukan: # Tulis teks label pada cacat pertama saja agar rapi
-                    text_display = f"{prediction.upper()} ({confidence:.0f}%)"
+                    text_display = f"RUSAK ({confidence:.0f}%)"
                     cv2.putText(frame, text_display, (abs_x, abs_y - 10), 
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.7, warna_indikator, 2)
                     cacat_ditemukan = True
                     
         # Jika kebetulan areanya sangat tipis/tidak tertangkap kontur, peringatan tetap muncul
         if not cacat_ditemukan:
-            cv2.putText(frame, f"KERUSAKAN: {prediction.upper()}", (start_x + 10, start_y + 30), 
+            cv2.putText(frame, f"RUSAK ({confidence:.0f}%)", (start_x + 10, start_y + 30), 
                         cv2.FONT_HERSHEY_SIMPLEX, 0.8, warna_indikator, 2)
     else:
-        # Jika kain normal, kita hanya tampilkan teks hijau kecil di pojok kiri atas
-        # agar kotak besar tidak mengganggu pemandangan
-        cv2.putText(frame, "Kain: NORMAL", (20, 40), 
+        # Jika kain normal, tampilkan teks hijau di pojok kiri atas
+        cv2.putText(frame, "NORMAL", (20, 40), 
                     cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
                 
     # Menampilkan window streaming kamera ke layar monitor
