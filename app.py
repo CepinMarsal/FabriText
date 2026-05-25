@@ -144,5 +144,122 @@ def predict():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route('/predict_frame', methods=['POST'])
+def predict_frame():
+    try:
+        data = request.json
+        if not data or 'image' not in data:
+            return jsonify({"error": "No image data"}), 400
+
+        image_data = data['image']
+        # Remove 'data:image/jpeg;base64,' if present
+        if ',' in image_data:
+            image_data = image_data.split(',')[1]
+
+        # Decode base64 to image
+        img_bytes = base64.b64decode(image_data)
+        npimg = np.frombuffer(img_bytes, np.uint8)
+        frame = cv2.imdecode(npimg, cv2.IMREAD_COLOR)
+
+        if frame is None:
+            return jsonify({"error": "Failed to decode image"}), 400
+
+        # Mirror the frame to match what the user sees in camera
+        frame = cv2.flip(frame, 1)
+        display = frame.copy()
+        h, w = frame.shape[:2]
+
+        # ROI - exactly as in realtime.py
+        box_size = 100
+        x1 = w // 2 - box_size // 2
+        y1 = h // 2 - box_size // 2
+        x2 = x1 + box_size
+        y2 = y1 + box_size
+
+        # Clamp coordinates
+        x1, y1 = max(0, x1), max(0, y1)
+        x2, y2 = min(w, x2), min(h, y2)
+
+        roi = frame[y1:y2, x1:x2]
+
+        # PREPROCESS
+        gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+
+        # CLAHE
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        gray = clahe.apply(gray)
+
+        # Blur
+        gray = cv2.GaussianBlur(gray, (3, 3), 0)
+
+        # GLCM
+        glcm = graycomatrix(
+            gray,
+            distances=[1, 2, 3],
+            angles=[0, np.pi/4, np.pi/2],
+            levels=256,
+            symmetric=True,
+            normed=True
+        )
+
+        contrast = graycoprops(glcm, 'contrast').mean()
+        homogeneity = graycoprops(glcm, 'homogeneity').mean()
+        energy = graycoprops(glcm, 'energy').mean()
+        asm = graycoprops(glcm, 'ASM').mean()
+        mean = np.mean(gray)
+
+        # FEATURE
+        fitur = pd.DataFrame(
+            [[mean, contrast, homogeneity, asm, energy]],
+            columns=['GLCM_Mean', 'GLCM_Contrast', 'GLCM_Homogeneity', 'GLCM_ASM', 'GLCM_Energy']
+        )
+
+        # SCALER
+        fitur_scaled = scaler.transform(fitur)
+
+        # PREDIKSI
+        hasil = knn_model.predict(fitur_scaled)[0]
+        confidence = np.max(knn_model.predict_proba(fitur_scaled))
+
+        # EDGE CHECK
+        edges = cv2.Canny(gray, 100, 200)
+        edge_density = np.sum(edges > 0) / (box_size * box_size)
+
+        status_text = "NORMAL"
+
+        # FINAL RESULT LOGIC
+        if hasil != 'normal' and confidence > 0.55 and edge_density > 0.015:
+            warna = (0, 0, 255)
+            text = 'RUSAK'
+            status_text = "RUSAK"
+        else:
+            warna = (0, 255, 0)
+            text = 'NORMAL'
+
+        # DRAW BOX
+        cv2.rectangle(display, (x1, y1), (x2, y2), warna, 3)
+        cv2.putText(display, text, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 1, warna, 3)
+
+        # DEBUG INFO
+        cv2.putText(display, f'Conf: {confidence:.2f}', (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+        cv2.putText(display, f'Edge: {edge_density:.3f}', (20, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+
+        # Convert back to base64
+        _, buffer = cv2.imencode('.jpg', display)
+        img_base64 = base64.b64encode(buffer).decode('utf-8')
+
+        return jsonify({
+            "status": status_text,
+            "image_base64": f"data:image/jpeg;base64,{img_base64}",
+            "confidence": f"{confidence:.2f}",
+            "edge_density": f"{edge_density:.3f}"
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
