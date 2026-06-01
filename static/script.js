@@ -186,7 +186,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 videoElement.play();
                 canvasElement.width = videoElement.videoWidth;
                 canvasElement.height = videoElement.videoHeight;
-                cameraInterval = setInterval(processFrame, 500);
+                cameraInterval = setInterval(processFrame, 150);
             };
         } catch (err) {
             console.error('Gagal memulai kamera', err);
@@ -274,7 +274,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 lbpVideo.play();
                 lbpCanvas.width = lbpVideo.videoWidth;
                 lbpCanvas.height = lbpVideo.videoHeight;
-                lbpInterval = setInterval(processLbpFrame, 500);
+                lbpInterval = setInterval(processLbpFrame, 150);
             };
         } catch (err) {
             console.error('Gagal memulai kamera LBP', err);

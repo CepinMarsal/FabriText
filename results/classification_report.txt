@@ -1,7 +1,7 @@
 HASIL EVALUASI MODEL KNN
 Akurasi Model : 73.89%
-Waktu Training : 0.0030 detik
-Waktu Prediksi : 0.0043 detik
+Waktu Training : 0.0100 detik
+Waktu Prediksi : 0.0059 detik
 Dimensi Fitur : 5
 Jumlah Data : 781
 

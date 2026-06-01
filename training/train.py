@@ -40,6 +40,109 @@ print(
     f"Total data : {len(df)}"
 )
 
+# RANGE FITUR TIAP KELAS
+fitur_glcm = [
+    'GLCM_Mean',
+    'GLCM_Contrast',
+    'GLCM_Homogeneity',
+    'GLCM_ASM',
+    'GLCM_Energy'
+]
+
+print("RANGE FITUR GLCM PER KELAS")
+for kelas in sorted(df['Kelas'].unique()):
+
+    print(f"\nKELAS : {kelas}")
+
+    data_kelas = df[df['Kelas'] == kelas]
+
+    for fitur in fitur_glcm:
+
+        nilai_min = data_kelas[fitur].min()
+        nilai_max = data_kelas[fitur].max()
+        nilai_avg = data_kelas[fitur].mean()
+
+        print(
+            f"{fitur:<20} "
+            f"Min={nilai_min:.4f} "
+            f"Max={nilai_max:.4f} "
+            f"Avg={nilai_avg:.4f}"
+        )
+
+summary = (
+    df.groupby('Kelas')[fitur_glcm]
+    .agg(['min', 'max', 'mean'])
+)
+
+summary.to_csv(
+    '../results/range_fitur_glcm.csv'
+)
+
+print(
+    "\nFile range_fitur_glcm.csv berhasil disimpan"
+)
+
+# SIMPAN RANGE FITUR KE TXT (PER FITUR)
+
+range_report_path = (
+    '../results/range_fitur_glcm.txt'
+)
+
+with open(
+    range_report_path,
+    'w'
+) as f:
+
+    f.write(
+        "RANGE FITUR GLCM\n\n"
+    )
+
+    for fitur in fitur_glcm:
+
+        f.write(
+            f"{fitur.upper()}\n"
+        )
+
+        f.write(
+            "-" * 60 + "\n"
+        )
+
+        f.write(
+            f"{'KELAS':<12}"
+            f"{'MIN':>15}"
+            f"{'MAX':>15}"
+            f"{'AVG':>15}\n"
+        )
+
+        f.write(
+            "-" * 60 + "\n"
+        )
+
+        for kelas in sorted(df['Kelas'].unique()):
+
+            data_kelas = df[
+                df['Kelas'] == kelas
+            ]
+
+            nilai_min = data_kelas[fitur].min()
+            nilai_max = data_kelas[fitur].max()
+            nilai_avg = data_kelas[fitur].mean()
+
+            f.write(
+                f"{kelas.upper():<12}"
+                f"{nilai_min:>15.4f}"
+                f"{nilai_max:>15.4f}"
+                f"{nilai_avg:>15.4f}\n"
+            )
+
+        f.write(
+            "\n"
+        )
+
+print(
+    "File range_fitur_glcm.txt berhasil disimpan"
+)
+
 # FITUR & LABEL
 X = df[
     [

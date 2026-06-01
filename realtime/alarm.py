@@ -10,14 +10,14 @@ from skimage.feature import (
 
 # LOAD MODEL
 with open(
-    '../results/model_knn_kain.pkl',
+    'results/model_knn_kain.pkl',
     'rb'
 ) as f:
 
     knn_model = pickle.load(f)
 
 with open(
-    '../results/scaler_knn_kain.pkl',
+    'results/scaler_knn_kain.pkl',
     'rb'
 ) as f:
 
